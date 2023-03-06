@@ -1,4 +1,6 @@
-# Gallery Saver for Flutter
+# Fork of Gallery Saver for Flutter, original [repo](https://github.com/CarnegieTechnologies/gallery_saver)
+
+The original repo isn't maintained anymore. We want to introduce some bugfixes, so we created a fork. 
 
 Saves images and videos from network or temporary file to external storage. 
 Both images and videos will be visible in Android Gallery and iOS Photos.
