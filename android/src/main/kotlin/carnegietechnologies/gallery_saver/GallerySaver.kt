@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
+import io.flutter.Log
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
@@ -71,18 +72,16 @@ class GallerySaver internal constructor(private val activity: Activity) :
                 }
             }
             success.await()
-            finishWithSuccess()
+            finishWith(success = true)
         }
     }
 
-    private fun finishWithSuccess() {
-        pendingResult!!.success(true)
-        pendingResult = null
-    }
-
-    private fun finishWithFailure() {
-        pendingResult!!.success(false)
-        pendingResult = null
+    private fun finishWith(success: Boolean) {
+        val pending = pendingResult
+        if (pending != null) {
+            pending.success(success)
+            pendingResult = null
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -94,7 +93,7 @@ class GallerySaver internal constructor(private val activity: Activity) :
             if (permissionGranted) {
                 saveMediaFile()
             } else {
-                finishWithFailure()
+                finishWith(success = false)
             }
             return true
         }
