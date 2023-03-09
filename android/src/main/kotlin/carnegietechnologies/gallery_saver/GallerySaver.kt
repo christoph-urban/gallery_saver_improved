@@ -14,14 +14,7 @@ enum class MediaType { image, video }
 /**
  * Class holding implementation of saving images and videos
  */
-class GallerySaver internal constructor(private val activity: Activity) :
-    PluginRegistry.RequestPermissionsResultListener {
-
-    private var pendingResult: MethodChannel.Result? = null
-    private var mediaType: MediaType? = null
-    private var filePath: String = ""
-    private var albumName: String = ""
-    private var toDcim: Boolean = false
+class GallerySaver internal constructor(private val activity: Activity) {
 
     private val job = Job()
     private val uiScope = CoroutineScope(Dispatchers.Main + job)
@@ -33,36 +26,14 @@ class GallerySaver internal constructor(private val activity: Activity) :
      * @param result     - result to be set when saving operation finishes
      * @param mediaType    - media type
      */
-    internal fun checkPermissionAndSaveFile(
+    internal fun saveFile(
         methodCall: MethodCall,
         result: MethodChannel.Result,
         mediaType: MediaType
     ) {
-        filePath = methodCall.argument<Any>(KEY_PATH)?.toString() ?: ""
-        albumName = methodCall.argument<Any>(KEY_ALBUM_NAME)?.toString() ?: ""
-        toDcim = methodCall.argument<Any>(KEY_TO_DCIM) as Boolean
-        this.mediaType = mediaType
-        this.pendingResult = result
-
-        if (isWritePermissionGranted() || android.os.Build.VERSION.SDK_INT >= 29) {
-            saveMediaFile()
-        } else {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION
-            )
-        }
-    }
-
-    private fun isWritePermissionGranted(): Boolean {
-        return PackageManager.PERMISSION_GRANTED ==
-                ActivityCompat.checkSelfPermission(
-                    activity, Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
-    }
-
-    private fun saveMediaFile() {
+        val filePath = methodCall.argument<Any>(KEY_PATH)?.toString() ?: ""
+        val albumName = methodCall.argument<Any>(KEY_ALBUM_NAME)?.toString() ?: ""
+        val toDcim = methodCall.argument<Any>(KEY_TO_DCIM) as Boolean
         uiScope.launch {
             val success = async(Dispatchers.IO) {
                 if (mediaType == MediaType.video) {
@@ -71,33 +42,8 @@ class GallerySaver internal constructor(private val activity: Activity) :
                     FileUtils.insertImage(activity.contentResolver, filePath, albumName, toDcim)
                 }
             }
-            success.await()
-            finishWith(success = true)
+            result.success(success.await())
         }
-    }
-
-    private fun finishWith(success: Boolean) {
-        val pending = pendingResult
-        if (pending != null) {
-            pending.success(success)
-            pendingResult = null
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>, grantResults: IntArray
-    ): Boolean {
-        if (requestCode == REQUEST_EXTERNAL_IMAGE_STORAGE_PERMISSION) {
-            val permissionGranted = grantResults.isNotEmpty()
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED
-            if (permissionGranted) {
-                saveMediaFile()
-            } else {
-                finishWith(success = false)
-            }
-            return true
-        }
-        return false
     }
 
     companion object {

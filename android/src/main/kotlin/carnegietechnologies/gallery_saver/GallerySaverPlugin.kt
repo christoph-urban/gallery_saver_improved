@@ -1,7 +1,10 @@
 package carnegietechnologies.gallery_saver
 
+import android.Manifest
 import android.app.Activity
+import android.content.pm.PackageManager
 import androidx.annotation.NonNull
+import androidx.core.app.ActivityCompat
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -9,7 +12,6 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.plugin.common.PluginRegistry.Registrar
 
 class GallerySaverPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
@@ -20,23 +22,33 @@ class GallerySaverPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "gallery_saver")
         channel.setMethodCallHandler(this)
-
-
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
+        if (!isWritePermissionGranted()) {
+            result.success(false)
+            return
+        }
         when (call.method) {
-            "saveImage" -> gallerySaver?.checkPermissionAndSaveFile(call, result, MediaType.image)
-            "saveVideo" -> gallerySaver?.checkPermissionAndSaveFile(call, result, MediaType.video)
+            "saveImage" -> gallerySaver?.saveFile(call, result, MediaType.image)
+            "saveVideo" -> gallerySaver?.saveFile(call, result, MediaType.video)
             else -> result.notImplemented()
         }
     }
 
+    private fun isWritePermissionGranted(): Boolean {
+        activity?.let {
+            return PackageManager.PERMISSION_GRANTED ==
+                    ActivityCompat.checkSelfPermission(
+                        it, Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+        }
+        return false
+    }
 
     override fun onAttachedToActivity(binding: ActivityPluginBinding) {
         this.activity = binding.activity
         gallerySaver = GallerySaver(activity!!)
-        binding.addRequestPermissionsResultListener(gallerySaver!!)
     }
 
 
@@ -54,6 +66,5 @@ class GallerySaverPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
-
     }
 }
