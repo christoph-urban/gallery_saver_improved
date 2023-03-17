@@ -25,7 +25,7 @@ class GallerySaverPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
-        if (!isWritePermissionGranted()) {
+        if (android.os.Build.VERSION.SDK_INT < 29 && !isWritePermissionGranted()) {
             result.success(false)
             return
         }
